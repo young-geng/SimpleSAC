@@ -1,0 +1,73 @@
+import numpy as np
+import torch
+
+
+class ReplayBuffer(object):
+    def __init__(self, max_size):
+        """Create Replay buffer.
+        Parameters
+        ----------
+        size: int
+            Max number of transitions to store in the buffer. When the buffer
+            overflows the old memories are dropped.
+        """
+        self._max_size = max_size
+        self._next_idx = 0
+        self._size = 0
+        self._initialized = False
+
+    def __len__(self):
+        return self._size
+
+    def _init_storage(self, observation_dim, action_dim):
+        self._observation_dim = observation_dim
+        self._action_dim = action_dim
+        self._observations = np.zeros((self._max_size, observation_dim), dtype=np.float32)
+        self._next_observations = np.zeros((self._max_size, observation_dim), dtype=np.float32)
+        self._actions = np.zeros((self._max_size, action_dim), dtype=np.float32)
+        self._rewards = np.zeros(self._max_size, dtype=np.float32)
+        self._dones = np.zeros(self._max_size, dtype=np.float32)
+        self._next_idx = 0
+        self._size = 0
+        self._initialized = True
+
+    def add_sample(self, observation, action, reward, next_observation, done):
+        if not self._initialized:
+            self._init_storage(observation.size, action.size)
+
+        self._observations[self._next_idx, :] = np.array(observation, dtype=np.float32)
+        self._next_observations[self._next_idx, :] = np.array(next_observation, dtype=np.float32)
+        self._actions[self._next_idx, :] = np.array(action, dtype=np.float32)
+        self._rewards[self._next_idx] = reward
+        self._dones[self._next_idx] = float(done)
+
+        if self._size < self._max_size:
+            self._size += 1
+        self._next_idx = (self._next_idx + 1) % self._max_size
+
+    def add_traj(self, observations, actions, rewards, next_observations, dones):
+        for o, a, r, no, d in zip(observations, actions, rewards, next_observations, dones):
+            self.add(o, a, r, no, d)
+
+    def sample(self, batch_size):
+        indices = np.random.choice(len(self), batch_size, replace=batch_size > len(self))
+        return dict(
+            observations=self._observations[indices, ...],
+            actions=self._actions[indices, ...],
+            rewards=self._rewards[indices, ...],
+            next_observations=self._next_observations[indices, ...],
+            dones=self._dones[indices, ...]
+        )
+
+    def generator(self, batch_size, n_batchs=None):
+        i = 0
+        while n_batchs is None or i < n_batchs:
+            yield self.sample(batch_size)
+            i += 1
+
+
+def batch_to_torch(batch, device):
+    return {
+        k: torch.tensor(v, dtype=torch.float32, device=device)
+        for k, v in batch.items()
+    }
