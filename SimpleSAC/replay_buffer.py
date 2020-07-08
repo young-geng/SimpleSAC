@@ -4,13 +4,6 @@ import torch
 
 class ReplayBuffer(object):
     def __init__(self, max_size):
-        """Create Replay buffer.
-        Parameters
-        ----------
-        size: int
-            Max number of transitions to store in the buffer. When the buffer
-            overflows the old memories are dropped.
-        """
         self._max_size = max_size
         self._next_idx = 0
         self._size = 0
@@ -68,6 +61,6 @@ class ReplayBuffer(object):
 
 def batch_to_torch(batch, device):
     return {
-        k: torch.tensor(v, dtype=torch.float32, device=device)
+        k: torch.from_numpy(v).to(device=device, non_blocking=True)
         for k, v in batch.items()
     }

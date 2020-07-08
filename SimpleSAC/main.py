@@ -43,7 +43,7 @@ flags_def = define_flags_with_default(
     reward_scale=1.0,
     alpha_multiplier=1.0,
     use_automatic_entropy_tuning=True,
-    target_entropy=3e-2,
+    target_entropy=-3e-2,
     policy_lr=3e-4,
     qf_lr=3e-4,
     optimizer_type='adam',
@@ -53,13 +53,9 @@ flags_def = define_flags_with_default(
 
 
 def main(argv):
-
     FLAGS = absl.flags.FLAGS
-
     os.makedirs(FLAGS.output_dir, exist_ok=True)
-
     print_flags(FLAGS, flags_def)
-
     set_random_seed(FLAGS.seed)
 
     train_sampler = StepSampler(lambda: gym.make(FLAGS.env), FLAGS.max_traj_length)
@@ -106,16 +102,22 @@ def main(argv):
     sampler_policy = SamplerPolicy(policy, FLAGS.device)
 
     for epoch in range(FLAGS.n_epochs):
-        logging.info('Epoch: {}'.format(epoch))
+        start_time = time.time()
 
         train_sampler.sample(
             sampler_policy, FLAGS.n_env_steps_per_epoch,
             deterministic=False, replay_buffer=replay_buffer
         )
 
+        sample_time = time.time() - start_time
+        start_time = time.time()
+
         for batch in replay_buffer.generator(FLAGS.batch_size, FLAGS.n_train_step_per_epoch):
             batch = batch_to_torch(batch, FLAGS.device)
             sac.train(batch)
+
+        train_time = time.time() - start_time
+        start_time = time.time()
 
         if (epoch + 1) % FLAGS.eval_period == 0:
             trajs = eval_sampler.sample(
@@ -126,9 +128,11 @@ def main(argv):
             average_return = np.mean([np.sum(t['rewards']) for t in trajs])
             logging.info('Epoch: {}, average reward: {}'.format(epoch, average_return))
 
+        eval_time = start_time - time.time()
+        logging.info('Epoch: {}, sample time: {}, train time: {}, eval time: {}'.format(
+            epoch, sample_time, train_time, eval_time
+        ))
+
 
 if __name__ == '__main__':
     absl.app.run(main)
-
-
-

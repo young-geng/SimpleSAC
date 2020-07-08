@@ -105,3 +105,12 @@ class FullyConnectedQFunction(nn.Module):
     def forward(self, observations, actions):
         input_tensor = torch.cat([observations, actions], dim=1)
         return torch.squeeze(self.network(input_tensor), dim=1)
+
+
+class Constant(nn.Module):
+    def __init__(self, init_value):
+        super().__init__()
+        self.constant = nn.Parameter(torch.tensor(init_value, dtype=torch.float32))
+
+    def forward(self):
+        return self.constant
