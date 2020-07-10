@@ -48,7 +48,7 @@ class ReplayBuffer(object):
             self.add(o, a, r, no, d)
 
     def sample(self, batch_size):
-        indices = np.random.choice(len(self), batch_size, replace=batch_size > len(self))
+        indices = np.random.randint(len(self), size=batch_size)
         return dict(
             observations=self._observations[indices, ...],
             actions=self._actions[indices, ...],

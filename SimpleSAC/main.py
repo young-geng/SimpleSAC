@@ -17,13 +17,13 @@ from .replay_buffer import ReplayBuffer, batch_to_torch, CachedIterator
 from .model import TanhGaussianPolicy, FullyConnectedQFunction, SamplerPolicy
 from .sampler import StepSampler, TrajSampler
 from .utils import Timer, define_flags_with_default, set_random_seed, print_flags, get_user_flags, prefix_metrics
-from viskit import logger, setup_logger
+from viskit.logging import logger, setup_logger
 
 
 FLAGS_DEF = define_flags_with_default(
     env='HalfCheetah-v2',
     max_traj_length=1000,
-    replay_buffer_size=100000,
+    replay_buffer_size=1000000,
     output_dir='/tmp/simple_sac',
     seed=42,
     device='cpu',

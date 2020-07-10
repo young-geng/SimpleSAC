@@ -18,7 +18,7 @@ import pickle
 import errno
 import torch
 
-from .tabulate import tabulate
+from viskit.tabulate import tabulate
 
 
 class TerminalTablePrinter(object):

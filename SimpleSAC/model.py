@@ -34,14 +34,17 @@ class FullyConnectedNetwork(nn.Module):
 
 class ReparameterizedTanhGaussian(nn.Module):
 
-    def __init__(self, log_std_min=-20.0, log_std_max=2.0,
-                 epsilon=1e-6):
+    def __init__(self, mean_min=-5.0, mean_max=5.0, log_std_min=-20.0,
+                 log_std_max=2.0, epsilon=1e-6):
         super().__init__()
+        self.mean_min = mean_min
+        self.mean_max = mean_max
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
         self.epsilon = epsilon
 
     def forward(self, mean, log_std, deterministic=False):
+        mean = torch.clamp(mean, self.mean_min, self.mean_max)
         log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
         std = torch.exp(log_std)
 
