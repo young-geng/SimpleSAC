@@ -1,5 +1,6 @@
 import random
 import pprint
+import time
 
 import numpy as np
 
@@ -7,6 +8,22 @@ import absl.flags
 from absl import logging
 
 import torch
+
+
+class Timer(object):
+
+    def __init__(self):
+        self._time = None
+
+    def __enter__(self):
+        self._start_time = time.time()
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        self._time = time.time() - self._start_time
+
+    def __call__(self):
+        return self._time
 
 
 def define_flags_with_default(**kwargs):
@@ -40,3 +57,13 @@ def print_flags(flags, flags_def):
             )
         )
     )
+
+
+def get_user_flags(flags, flags_def):
+    return {key: getattr(flags, key) for key in flags_def}
+
+
+def prefix_metrics(metrics, prefix):
+    return {
+        '{}/{}'.format(prefix, key): value for key, value in metrics.items()
+    }

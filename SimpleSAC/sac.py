@@ -119,6 +119,9 @@ class SAC(object):
         qf2_loss = F.mse_loss(q2_pred, q_target.detach())
         qf_loss = qf1_loss + qf2_loss
 
+        if torch.isnan(policy_loss) or torch.isnan(qf_loss):
+            import pdb; pdb.set_trace()
+
         self.policy_optimizer.zero_grad()
         policy_loss.backward()
         self.policy_optimizer.step()
@@ -139,13 +142,14 @@ class SAC(object):
 
         if return_stats:
             return dict(
-                policy_loss=sac_forward['policy_loss'].item(),
-                qf1_loss=sac_forward['qf1_loss'].item(),
-                qf2_loss=sac_forward['qf2_loss'].item(),
-                alpha_loss=sac_forward['alpha_loss'].item(),
-                alpha=sac_forward['alpha'].item(),
+                policy_loss=policy_loss.item(),
+                qf1_loss=qf1_loss.item(),
+                qf2_loss=qf2_loss.item(),
+                alpha_loss=alpha_loss.item(),
+                alpha=alpha.item(),
                 average_qf1=q1_pred.mean().item(),
-                average_qf2=q2_pred.mean.item(),
+                average_qf2=q2_pred.mean().item(),
+                total_steps=self.total_steps,
             )
         return {}
 

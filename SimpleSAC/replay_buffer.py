@@ -1,3 +1,6 @@
+from queue import Queue
+import threading
+
 import numpy as np
 import torch
 
@@ -8,6 +11,7 @@ class ReplayBuffer(object):
         self._next_idx = 0
         self._size = 0
         self._initialized = False
+        self._total_steps = 0
 
     def __len__(self):
         return self._size
@@ -37,6 +41,7 @@ class ReplayBuffer(object):
         if self._size < self._max_size:
             self._size += 1
         self._next_idx = (self._next_idx + 1) % self._max_size
+        self._total_steps += 1
 
     def add_traj(self, observations, actions, rewards, next_observations, dones):
         for o, a, r, no, d in zip(observations, actions, rewards, next_observations, dones):
@@ -58,9 +63,53 @@ class ReplayBuffer(object):
             yield self.sample(batch_size)
             i += 1
 
+    @property
+    def total_steps(self):
+        return self._total_steps
+
 
 def batch_to_torch(batch, device):
     return {
         k: torch.from_numpy(v).to(device=device, non_blocking=True)
         for k, v in batch.items()
     }
+
+
+class CachedIterator(object):
+
+    def __init__(self, iterator, map_fn=None, cache_size=10):
+        self.iterator = iterator
+        self.map_fn = map_fn
+        self.cache_size = cache_size
+
+        self.queue = None
+        self.worker = None
+
+    def _enqueue(self, queue, iterator, map_fn):
+        for obj in iterator:
+            if map_fn is not None:
+                obj = map_fn(obj)
+            queue.put((False, obj))
+        queue.put((True, None))
+
+    def __iter__(self):
+        if self.cache_size == 0:
+            for obj in self.iterator:
+                if self.map_fn is not None:
+                    obj = self.map_fn(obj)
+                yield obj
+        else:
+            if self.queue is None:
+                self.queue = Queue(self.cache_size)
+                self.worker = threading.Thread(
+                    target=self._enqueue,
+                    args=(self.queue, self.iterator, self.map_fn)
+                )
+                self.worker.start()
+            while True:
+                task_done, obj = self.queue.get()
+                if task_done:
+                    self.worker.join()
+                    raise StopIteration
+                else:
+                    yield obj

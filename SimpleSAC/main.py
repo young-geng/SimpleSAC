@@ -1,6 +1,7 @@
 import os
 import time
 from copy import deepcopy
+import uuid
 
 import numpy as np
 import pprint
@@ -10,23 +11,23 @@ import torch
 
 import absl.app
 import absl.flags
-from absl import logging
 
 from .sac import SAC
-from .replay_buffer import ReplayBuffer, batch_to_torch
+from .replay_buffer import ReplayBuffer, batch_to_torch, CachedIterator
 from .model import TanhGaussianPolicy, FullyConnectedQFunction, SamplerPolicy
 from .sampler import StepSampler, TrajSampler
-from .utils import define_flags_with_default, set_random_seed, print_flags
+from .utils import Timer, define_flags_with_default, set_random_seed, print_flags, get_user_flags, prefix_metrics
+from viskit import logger, setup_logger
 
 
-flags_def = define_flags_with_default(
+FLAGS_DEF = define_flags_with_default(
     env='HalfCheetah-v2',
     max_traj_length=1000,
     replay_buffer_size=100000,
     output_dir='/tmp/simple_sac',
     seed=42,
     device='cpu',
-    logging_period=100,
+    data_loader_cache_size=0,
 
     policy_arch='256-256',
     qf_arch='256-256',
@@ -54,12 +55,23 @@ flags_def = define_flags_with_default(
 
 def main(argv):
     FLAGS = absl.flags.FLAGS
-    os.makedirs(FLAGS.output_dir, exist_ok=True)
-    print_flags(FLAGS, flags_def)
+
+    variant = get_user_flags(FLAGS, FLAGS_DEF)
+    setup_logger(
+        variant=variant,
+        exp_id=uuid.uuid4().hex,
+        seed=FLAGS.seed,
+        base_log_dir=FLAGS.output_dir,
+        include_exp_prefix_sub_dir=False
+    )
+
     set_random_seed(FLAGS.seed)
 
-    train_sampler = StepSampler(lambda: gym.make(FLAGS.env), FLAGS.max_traj_length)
-    eval_sampler = TrajSampler(lambda: gym.make(FLAGS.env), FLAGS.max_traj_length)
+    def env_maker():
+        return gym.make(FLAGS.env)
+
+    train_sampler = StepSampler(env_maker, FLAGS.max_traj_length)
+    eval_sampler = TrajSampler(env_maker, FLAGS.max_traj_length)
 
     replay_buffer = ReplayBuffer(FLAGS.replay_buffer_size)
 
@@ -100,38 +112,48 @@ def main(argv):
     sac.torch_to_device(FLAGS.device)
 
     sampler_policy = SamplerPolicy(policy, FLAGS.device)
+    batch_generator = CachedIterator(
+        replay_buffer.generator(FLAGS.batch_size),
+        lambda batch: batch_to_torch(batch, FLAGS.device),
+        FLAGS.data_loader_cache_size,
+    )
+
+    metrics = {}
 
     for epoch in range(FLAGS.n_epochs):
-        start_time = time.time()
 
-        train_sampler.sample(
-            sampler_policy, FLAGS.n_env_steps_per_epoch,
-            deterministic=False, replay_buffer=replay_buffer
-        )
-
-        sample_time = time.time() - start_time
-        start_time = time.time()
-
-        for batch in replay_buffer.generator(FLAGS.batch_size, FLAGS.n_train_step_per_epoch):
-            batch = batch_to_torch(batch, FLAGS.device)
-            sac.train(batch)
-
-        train_time = time.time() - start_time
-        start_time = time.time()
-
-        if (epoch + 1) % FLAGS.eval_period == 0:
-            trajs = eval_sampler.sample(
-                sampler_policy, FLAGS.eval_n_trajs, deterministic=True
+        with Timer() as rollout_timer:
+            train_sampler.sample(
+                sampler_policy, FLAGS.n_env_steps_per_epoch,
+                deterministic=False, replay_buffer=replay_buffer
             )
+            metrics['env_steps'] = replay_buffer.total_steps
+            metrics['epoch'] = epoch
 
-            # TODO: add proper logging utilities.
-            average_return = np.mean([np.sum(t['rewards']) for t in trajs])
-            logging.info('Epoch: {}, average reward: {}'.format(epoch, average_return))
+        with Timer() as train_timer:
+            for batch_idx, batch in zip(range(FLAGS.n_train_step_per_epoch), batch_generator):
+                if batch_idx + 1 == FLAGS.n_train_step_per_epoch:
+                    metrics.update(
+                        prefix_metrics(sac.train(batch, return_stats=True), 'sac')
+                    )
+                else:
+                    sac.train(batch)
 
-        eval_time = start_time - time.time()
-        logging.info('Epoch: {}, sample time: {}, train time: {}, eval time: {}'.format(
-            epoch, sample_time, train_time, eval_time
-        ))
+        with Timer() as eval_timer:
+            if epoch == 0 or (epoch + 1) % FLAGS.eval_period == 0:
+                trajs = eval_sampler.sample(
+                    sampler_policy, FLAGS.eval_n_trajs, deterministic=True
+                )
+
+                metrics['average_return'] = np.mean([np.sum(t['rewards']) for t in trajs])
+
+
+        metrics['rollout_time'] = rollout_timer()
+        metrics['train_time'] = train_timer()
+        metrics['eval_time'] = eval_timer()
+        metrics['epoch_time'] = rollout_timer() + train_timer() + eval_timer()
+        logger.record_dict(metrics)
+        logger.dump_tabular(with_prefix=False, with_timestamp=False)
 
 
 if __name__ == '__main__':
