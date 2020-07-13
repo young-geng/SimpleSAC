@@ -44,7 +44,7 @@ FLAGS_DEF = define_flags_with_default(
     reward_scale=1.0,
     alpha_multiplier=1.0,
     use_automatic_entropy_tuning=True,
-    target_entropy=-3e-2,
+    target_entropy=0.0,
     policy_lr=3e-4,
     qf_lr=3e-4,
     optimizer_type='adam',
@@ -78,7 +78,7 @@ def main(argv):
     policy = TanhGaussianPolicy(
         train_sampler.env.observation_space.shape[0],
         train_sampler.env.action_space.shape[0],
-        FLAGS.policy_arch
+        FLAGS.policy_arch,
     )
 
     qf1 = FullyConnectedQFunction(
@@ -95,13 +95,18 @@ def main(argv):
     )
     target_qf2 = deepcopy(qf2)
 
+    if FLAGS.target_entropy >= 0:
+        target_entropy = -np.prod(train_sampler.env.action_space.shape).item()
+    else:
+        target_entropy = FLAGS.target_entropy
+
     sac = SAC(
         policy, qf1, qf2, target_qf1, target_qf2,
         discount=FLAGS.discount,
         reward_scale=FLAGS.reward_scale,
         alpha_multiplier=FLAGS.alpha_multiplier,
         use_automatic_entropy_tuning=FLAGS.use_automatic_entropy_tuning,
-        target_entropy=FLAGS.target_entropy,
+        target_entropy=target_entropy,
         policy_lr=FLAGS.policy_lr,
         qf_lr=FLAGS.qf_lr,
         optimizer_type=FLAGS.optimizer_type,
@@ -146,6 +151,7 @@ def main(argv):
                 )
 
                 metrics['average_return'] = np.mean([np.sum(t['rewards']) for t in trajs])
+                metrics['average_traj_length'] = np.mean([len(t['rewards']) for t in trajs])
 
 
         metrics['rollout_time'] = rollout_timer()

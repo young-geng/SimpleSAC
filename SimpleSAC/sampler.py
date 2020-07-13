@@ -22,7 +22,7 @@ class StepSampler(object):
             observation = self._current_observation
             action = policy(
                 np.expand_dims(observation, 0), deterministic=deterministic
-            )
+            )[0, :]
             next_observation, reward, done, _ = self.env.step(action)
             observations.append(observation)
             actions.append(action)

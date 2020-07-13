@@ -7,7 +7,7 @@ import torch.optim as optim
 from torch import nn as nn
 import torch.nn.functional as F
 
-from .model import Constant
+from .model import Scalar
 
 
 def soft_target_update(network, target_network, soft_target_update_rate):
@@ -64,7 +64,7 @@ class SAC(object):
         )
 
         if self.use_automatic_entropy_tuning:
-            self.log_alpha = Constant(0.0)
+            self.log_alpha = Scalar(0.0)
             self.alpha_optimizer = optimizer_class(
                 self.log_alpha.parameters(),
                 lr=policy_lr,
@@ -92,6 +92,9 @@ class SAC(object):
 
         if self.use_automatic_entropy_tuning:
             alpha_loss = -(self.log_alpha() * (log_pi + self.target_entropy).detach()).mean()
+            self.alpha_optimizer.zero_grad()
+            alpha_loss.backward()
+            self.alpha_optimizer.step()
             alpha = self.log_alpha().exp() * self.alpha_multiplier
         else:
             alpha_loss = observations.new_tensor(0.0)
@@ -127,11 +130,6 @@ class SAC(object):
         qf_loss.backward()
         self.qf_optimizer.step()
 
-        if self.use_automatic_entropy_tuning:
-            self.alpha_optimizer.zero_grad()
-            alpha_loss.backward()
-            self.alpha_optimizer.step()
-
         if self.total_steps % self.target_update_period == 0:
             self.update_target_network(
                 self.soft_target_update_rate
@@ -139,6 +137,7 @@ class SAC(object):
 
         if return_stats:
             return dict(
+                log_pi=log_pi.mean().item(),
                 policy_loss=policy_loss.item(),
                 qf1_loss=qf1_loss.item(),
                 qf2_loss=qf2_loss.item(),
@@ -146,6 +145,7 @@ class SAC(object):
                 alpha=alpha.item(),
                 average_qf1=q1_pred.mean().item(),
                 average_qf2=q2_pred.mean().item(),
+                average_target_q=target_q_values.mean().item(),
                 total_steps=self.total_steps,
             )
         return {}
