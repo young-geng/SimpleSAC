@@ -68,7 +68,7 @@ def main(argv):
     set_random_seed(FLAGS.seed)
 
     def env_maker():
-        return gym.make(FLAGS.env)
+        return gym.make(FLAGS.env).unwrapped
 
     train_sampler = StepSampler(env_maker, FLAGS.max_traj_length)
     eval_sampler = TrajSampler(env_maker, FLAGS.max_traj_length)
