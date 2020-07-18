@@ -92,9 +92,6 @@ class SAC(object):
 
         if self.use_automatic_entropy_tuning:
             alpha_loss = -(self.log_alpha() * (log_pi + self.target_entropy).detach()).mean()
-            self.alpha_optimizer.zero_grad()
-            alpha_loss.backward()
-            self.alpha_optimizer.step()
             alpha = self.log_alpha().exp() * self.alpha_multiplier
         else:
             alpha_loss = observations.new_tensor(0.0)
@@ -121,6 +118,11 @@ class SAC(object):
         qf1_loss = F.mse_loss(q1_pred, q_target.detach())
         qf2_loss = F.mse_loss(q2_pred, q_target.detach())
         qf_loss = qf1_loss + qf2_loss
+
+        if self.use_automatic_entropy_tuning:
+            self.alpha_optimizer.zero_grad()
+            alpha_loss.backward()
+            self.alpha_optimizer.step()
 
         self.policy_optimizer.zero_grad()
         policy_loss.backward()

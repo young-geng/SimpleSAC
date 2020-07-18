@@ -31,6 +31,7 @@ FLAGS_DEF = define_flags_with_default(
 
     policy_arch='256-256',
     qf_arch='256-256',
+    policy_log_std_offset=-1.0,
 
     n_epochs=2000,
     n_env_steps_per_epoch=1000,
@@ -68,6 +69,7 @@ def main(argv):
     set_random_seed(FLAGS.seed)
 
     def env_maker():
+        # Important to use unwrapped environment since it's not time-limited.
         return gym.make(FLAGS.env).unwrapped
 
     train_sampler = StepSampler(env_maker, FLAGS.max_traj_length)
@@ -79,6 +81,7 @@ def main(argv):
         train_sampler.env.observation_space.shape[0],
         train_sampler.env.action_space.shape[0],
         FLAGS.policy_arch,
+        log_std_offset=FLAGS.policy_log_std_offset,
     )
 
     qf1 = FullyConnectedQFunction(
