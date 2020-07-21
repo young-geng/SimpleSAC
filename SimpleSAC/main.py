@@ -31,6 +31,7 @@ FLAGS_DEF = define_flags_with_default(
 
     policy_arch='256-256',
     qf_arch='256-256',
+    policy_log_std_multiplier=1.0,
     policy_log_std_offset=-1.0,
 
     n_epochs=2000,
@@ -81,6 +82,7 @@ def main(argv):
         train_sampler.env.observation_space.shape[0],
         train_sampler.env.action_space.shape[0],
         FLAGS.policy_arch,
+        log_std_multiplier=FLAGS.policy_log_std_multiplier,
         log_std_offset=FLAGS.policy_log_std_offset,
     )
 

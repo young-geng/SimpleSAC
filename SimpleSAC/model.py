@@ -22,7 +22,7 @@ class FullyConnectedNetwork(nn.Module):
         for hidden_size in hidden_sizes:
             fc = nn.Linear(d, hidden_size)
             modules.append(fc)
-            modules.append(nn.LeakyReLU())
+            modules.append(nn.ReLU())
             d = hidden_size
 
         last_fc = nn.Linear(d, output_dim)
@@ -50,7 +50,7 @@ class ReparameterizedTanhGaussian(nn.Module):
         )
 
         if deterministic:
-            action_sample = F.tanh(mean)
+            action_sample = torch.tanh(mean)
         else:
             action_sample = action_distribution.rsample()
 
@@ -63,7 +63,8 @@ class ReparameterizedTanhGaussian(nn.Module):
 
 class TanhGaussianPolicy(nn.Module):
 
-    def __init__(self, observation_dim, action_dim, arch='256-256', log_std_offset=-1.0):
+    def __init__(self, observation_dim, action_dim, arch='256-256',
+                 log_std_multiplier=1.0, log_std_offset=-1.0):
         super().__init__()
         self.observation_dim = observation_dim
         self.action_dim = action_dim
@@ -72,13 +73,14 @@ class TanhGaussianPolicy(nn.Module):
         self.base_network = FullyConnectedNetwork(
             observation_dim, 2 * action_dim, arch
         )
+        self.log_std_multiplier = Scalar(log_std_multiplier)
         self.log_std_offset = Scalar(log_std_offset)
         self.tanh_gaussian = ReparameterizedTanhGaussian()
 
     def forward(self, observations, deterministic=False):
         base_network_output = self.base_network(observations)
         mean, log_std = torch.split(base_network_output, self.action_dim, dim=1)
-        log_std += self.log_std_offset()
+        log_std = self.log_std_multiplier() * log_std + self.log_std_offset()
         return self.tanh_gaussian(mean, log_std, deterministic)
 
 
