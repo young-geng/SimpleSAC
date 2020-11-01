@@ -1,0 +1,15 @@
+name: SimpleSAC
+channels:
+    - https://conda.anaconda.org/pytorch
+dependencies:
+    - python=3.7
+    - numpy
+    - patchelf
+    - pytorch
+    - matplotlib
+    - pip:
+        - gym
+        - mujoco_py
+        - absl-py
+        - Flask
+        - plotly
