@@ -1,6 +1,3 @@
-from queue import Queue
-import threading
-
 import numpy as np
 import torch
 
@@ -57,11 +54,18 @@ class ReplayBuffer(object):
             dones=self._dones[indices, ...]
         )
 
-    def generator(self, batch_size, n_batchs=None):
+    def torch_sample(self, batch_size, device):
+        return batch_to_torch(self.sample(batch_size), device)
+
+    def sample_generator(self, batch_size, n_batchs=None):
         i = 0
         while n_batchs is None or i < n_batchs:
             yield self.sample(batch_size)
             i += 1
+
+    def torch_sample_generator(self, batch_size, device, n_batchs=None):
+        for batch in self.sample_generator(batch_size, n_batchs):
+            yield batch_to_torch(batch, device)
 
     @property
     def total_steps(self):
@@ -73,43 +77,3 @@ def batch_to_torch(batch, device):
         k: torch.from_numpy(v).to(device=device, non_blocking=True)
         for k, v in batch.items()
     }
-
-
-class CachedIterator(object):
-
-    def __init__(self, iterator, map_fn=None, cache_size=10):
-        self.iterator = iterator
-        self.map_fn = map_fn
-        self.cache_size = cache_size
-
-        self.queue = None
-        self.worker = None
-
-    def _enqueue(self, queue, iterator, map_fn):
-        for obj in iterator:
-            if map_fn is not None:
-                obj = map_fn(obj)
-            queue.put((False, obj))
-        queue.put((True, None))
-
-    def __iter__(self):
-        if self.cache_size == 0:
-            for obj in self.iterator:
-                if self.map_fn is not None:
-                    obj = self.map_fn(obj)
-                yield obj
-        else:
-            if self.queue is None:
-                self.queue = Queue(self.cache_size)
-                self.worker = threading.Thread(
-                    target=self._enqueue,
-                    args=(self.queue, self.iterator, self.map_fn)
-                )
-                self.worker.start()
-            while True:
-                task_done, obj = self.queue.get()
-                if task_done:
-                    self.worker.join()
-                    raise StopIteration
-                else:
-                    yield obj

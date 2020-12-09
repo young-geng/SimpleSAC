@@ -13,7 +13,7 @@ import absl.app
 import absl.flags
 
 from .sac import SAC
-from .replay_buffer import ReplayBuffer, batch_to_torch, CachedIterator
+from .replay_buffer import ReplayBuffer, batch_to_torch
 from .model import TanhGaussianPolicy, FullyConnectedQFunction, SamplerPolicy
 from .sampler import StepSampler, TrajSampler
 from .utils import Timer, define_flags_with_default, set_random_seed, print_flags, get_user_flags, prefix_metrics
@@ -27,7 +27,6 @@ FLAGS_DEF = define_flags_with_default(
     output_dir='/tmp/simple_sac',
     seed=42,
     device='cpu',
-    data_loader_cache_size=0,
 
     policy_arch='256-256',
     qf_arch='256-256',
@@ -118,18 +117,11 @@ def main(argv):
         soft_target_update_rate=FLAGS.soft_target_update_rate,
         target_update_period=FLAGS.target_update_period,
     )
-
     sac.torch_to_device(FLAGS.device)
 
     sampler_policy = SamplerPolicy(policy, FLAGS.device)
-    batch_generator = CachedIterator(
-        replay_buffer.generator(FLAGS.batch_size),
-        lambda batch: batch_to_torch(batch, FLAGS.device),
-        FLAGS.data_loader_cache_size,
-    )
 
     metrics = {}
-
     for epoch in range(FLAGS.n_epochs):
 
         with Timer() as rollout_timer:
@@ -141,7 +133,10 @@ def main(argv):
             metrics['epoch'] = epoch
 
         with Timer() as train_timer:
-            for batch_idx, batch in zip(range(FLAGS.n_train_step_per_epoch), batch_generator):
+            batch_generator = replay_buffer.torch_sample_generator(
+                FLAGS.batch_size, FLAGS.device, FLAGS.n_train_step_per_epoch
+            )
+            for batch_idx, batch in enumerate(batch_generator):
                 if batch_idx + 1 == FLAGS.n_train_step_per_epoch:
                     metrics.update(
                         prefix_metrics(sac.train(batch, return_stats=True), 'sac')
@@ -157,7 +152,6 @@ def main(argv):
 
                 metrics['average_return'] = np.mean([np.sum(t['rewards']) for t in trajs])
                 metrics['average_traj_length'] = np.mean([len(t['rewards']) for t in trajs])
-
 
         metrics['rollout_time'] = rollout_timer()
         metrics['train_time'] = train_timer()
