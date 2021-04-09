@@ -17,7 +17,7 @@ from .replay_buffer import ReplayBuffer, batch_to_torch
 from .model import TanhGaussianPolicy, FullyConnectedQFunction, SamplerPolicy
 from .sampler import StepSampler, TrajSampler
 from .utils import Timer, define_flags_with_default, set_random_seed, print_flags, get_user_flags, prefix_metrics
-from viskit.logging import logger, setup_logger
+from viskit.logging import logger, setup_logger, WandBLogger
 
 
 FLAGS_DEF = define_flags_with_default(
@@ -51,6 +51,10 @@ FLAGS_DEF = define_flags_with_default(
     optimizer_type='adam',
     soft_target_update_rate=5e-3,
     target_update_period=1,
+
+    wandb_logging=False,
+    wandb_prefix='SimpleSAC',
+    wandb_project='sac',
 )
 
 
@@ -58,12 +62,22 @@ def main(argv):
     FLAGS = absl.flags.FLAGS
 
     variant = get_user_flags(FLAGS, FLAGS_DEF)
+    experiment_id = uuid.uuid4().hex
     setup_logger(
         variant=variant,
-        exp_id=uuid.uuid4().hex,
+        exp_id=experiment_id,
         seed=FLAGS.seed,
         base_log_dir=FLAGS.output_dir,
         include_exp_prefix_sub_dir=False
+    )
+
+    wandb_logger = WandBLogger(
+        wandb_logging=FLAGS.wandb_logging,
+        variant=variant,
+        log_dir=logger.get_snapshot_dir(),
+        project=FLAGS.wandb_project,
+        experiment_id=experiment_id,
+        prefix=FLAGS.wandb_prefix,
     )
 
     set_random_seed(FLAGS.seed)
@@ -159,6 +173,7 @@ def main(argv):
         metrics['epoch_time'] = rollout_timer() + train_timer() + eval_timer()
         logger.record_dict(metrics)
         logger.dump_tabular(with_prefix=False, with_timestamp=False)
+        wandb_logger.log(metrics)
 
 
 if __name__ == '__main__':
