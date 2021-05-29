@@ -19,7 +19,7 @@ pip install -e .
 ## Run Experiments
 You can run experiments using the following command:
 ```
-python -m SimpleSAC.main --env 'HalfCheetah-v2' --output_dir './experiment_output' --device='cuda'
+python -m SimpleSAC.sac_main --env 'HalfCheetah-v2' --output_dir './experiment_output' --device='cuda'
 ```
 If you want to run on CPU only, just omit the `--device='cuda'` part.
 All available command options can be seen in SimpleSAC/main.py.

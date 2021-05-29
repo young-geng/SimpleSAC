@@ -17,7 +17,8 @@ from .replay_buffer import ReplayBuffer, batch_to_torch
 from .model import TanhGaussianPolicy, FullyConnectedQFunction, SamplerPolicy
 from .sampler import StepSampler, TrajSampler
 from .utils import Timer, define_flags_with_default, set_random_seed, print_flags, get_user_flags, prefix_metrics
-from viskit.logging import logger, setup_logger, WandBLogger
+from .utils import WandBLogger
+from viskit.logging import logger, setup_logger
 
 
 FLAGS_DEF = define_flags_with_default(
@@ -74,10 +75,10 @@ def main(argv):
     wandb_logger = WandBLogger(
         wandb_logging=FLAGS.wandb_logging,
         variant=variant,
-        log_dir=logger.get_snapshot_dir(),
         project=FLAGS.wandb_project,
         experiment_id=experiment_id,
         prefix=FLAGS.wandb_prefix,
+        output_dir=logger.get_snapshot_dir(),
     )
 
     set_random_seed(FLAGS.seed)

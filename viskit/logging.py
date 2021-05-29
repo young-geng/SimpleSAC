@@ -435,26 +435,4 @@ def setup_logger(
     return log_dir
 
 
-class WandBLogger(object):
-    def __init__(self, wandb_logging, variant, project, log_dir, experiment_id, prefix=''):
-        self.wandb_logging = wandb_logging
-        if wandb_logging:
-            global wandb
-            import wandb
-
-            if prefix != '':
-                project = '{}--{}'.format(prefix, project)
-
-            wandb.init(
-                config=variant,
-                project=project,
-                dir=log_dir,
-                id=experiment_id,
-            )
-
-    def log(self, *args, **kwargs):
-        if self.wandb_logging:
-            wandb.log(*args, **kwargs)
-
-
 logger = Logger()

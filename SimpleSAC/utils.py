@@ -1,6 +1,9 @@
 import random
 import pprint
 import time
+import tempfile
+import uuid
+import os
 
 import numpy as np
 
@@ -8,6 +11,46 @@ import absl.flags
 from absl import logging
 
 import torch
+
+
+class WandBLogger(object):
+    def __init__(self, wandb_logging, variant, project, experiment_id=None,
+                 prefix='', output_dir=None, random_time=0.0):
+        self.wandb_logging = wandb_logging
+        if wandb_logging:
+            global wandb
+            import wandb
+
+            if experiment_id is None:
+                experiment_id = uuid.uuid4().hex
+
+            if prefix != '':
+                project = '{}--{}'.format(prefix, project)
+
+            if output_dir is None:
+                output_dir = tempfile.mkdtemp()
+            else:
+                output_dir = os.path.join(output_dir, experiment_id)
+                os.makedirs(output_dir, exist_ok=True)
+
+            if random_time > 0:
+                time.sleep(np.random.uniform(0, random_time))
+
+            wandb.init(
+                config=variant,
+                project=project,
+                dir=output_dir,
+                id=experiment_id,
+                settings=wandb.Settings(
+                    start_method="thread",
+                    _disable_stats=True,
+                ),
+            )
+
+
+    def log(self, *args, **kwargs):
+        if self.wandb_logging:
+            wandb.log(*args, **kwargs)
 
 
 class Timer(object):
