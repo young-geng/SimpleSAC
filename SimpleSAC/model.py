@@ -92,10 +92,18 @@ class SamplerPolicy(object):
 
     def __call__(self, observations, deterministic=False):
         with torch.no_grad():
-            observations = torch.tensor(
+            single_action = len(observations.shape) == 1
+            new_observations = torch.tensor(
                 observations, dtype=torch.float32, device=self.device
             )
-            actions, _ = self.policy(observations, deterministic)
+
+            if single_action:
+                new_observations = new_observations.unsqueeze(0)
+
+            actions, _ = self.policy(new_observations, deterministic)
+
+            if single_action:
+                actions = actions.squeeze(0)
             actions = actions.cpu().numpy()
         return actions
 

@@ -20,9 +20,7 @@ class StepSampler(object):
         for _ in range(n_steps):
             self._traj_steps += 1
             observation = self._current_observation
-            action = policy(
-                np.expand_dims(observation, 0), deterministic=deterministic
-            )[0, :]
+            action = policy(observation, deterministic=deterministic)
             next_observation, reward, done, _ = self.env.step(action)
             observations.append(observation)
             actions.append(action)
@@ -73,9 +71,7 @@ class TrajSampler(object):
             observation = self.env.reset()
 
             for _ in range(self.max_traj_length):
-                action = policy(
-                    np.expand_dims(observation, 0), deterministic=deterministic
-                )
+                action = policy(observation, deterministic=deterministic)
                 next_observation, reward, done, _ = self.env.step(action)
                 observations.append(observation)
                 actions.append(action)
