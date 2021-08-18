@@ -2,14 +2,17 @@ name: SimpleSAC
 channels:
     - https://conda.anaconda.org/pytorch
 dependencies:
-    - python=3.7
+    - python=3.8
+    - pip
     - numpy
     - patchelf
-    - pytorch
     - matplotlib
+    - pytorch=1.9.0
+    - cudatoolkit=10.2
     - pip:
         - gym
         - mujoco_py
         - absl-py
         - Flask
         - plotly
+        - wandb

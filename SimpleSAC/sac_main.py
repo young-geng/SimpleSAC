@@ -13,11 +13,11 @@ import absl.app
 import absl.flags
 
 from .sac import SAC
-from .replay_buffer import ReplayBuffer, batch_to_torch
+from .replay_buffer import ReplayBuffer
 from .model import TanhGaussianPolicy, FullyConnectedQFunction, SamplerPolicy
 from .sampler import StepSampler, TrajSampler
-from .utils import Timer, define_flags_with_default, set_random_seed, print_flags, get_user_flags, prefix_metrics
-from .utils import WandBLogger
+from .utils import Timer, define_flags_with_default, set_random_seed
+from .utils import WandBLogger, print_flags, get_user_flags, prefix_metrics
 from viskit.logging import logger, setup_logger
 
 
@@ -83,12 +83,8 @@ def main(argv):
 
     set_random_seed(FLAGS.seed)
 
-    def env_maker():
-        # Important to use unwrapped environment since it's not time-limited.
-        return gym.make(FLAGS.env).unwrapped
-
-    train_sampler = StepSampler(env_maker, FLAGS.max_traj_length)
-    eval_sampler = TrajSampler(env_maker, FLAGS.max_traj_length)
+    train_sampler = StepSampler(gym.make(FLAGS.env).unwrapped, FLAGS.max_traj_length)
+    eval_sampler = TrajSampler(gym.make(FLAGS.env).unwrapped, FLAGS.max_traj_length)
 
     replay_buffer = ReplayBuffer(FLAGS.replay_buffer_size)
 
@@ -151,13 +147,8 @@ def main(argv):
             batch_generator = replay_buffer.torch_sample_generator(
                 FLAGS.batch_size, FLAGS.device, FLAGS.n_train_step_per_epoch
             )
-            for batch_idx, batch in enumerate(batch_generator):
-                if batch_idx + 1 == FLAGS.n_train_step_per_epoch:
-                    metrics.update(
-                        prefix_metrics(sac.train(batch, return_stats=True), 'sac')
-                    )
-                else:
-                    sac.train(batch)
+            for batch in batch_generator:
+                metrics.update(prefix_metrics(sac.train(batch, return_stats=True), 'sac'))
 
         with Timer() as eval_timer:
             if epoch == 0 or (epoch + 1) % FLAGS.eval_period == 0:

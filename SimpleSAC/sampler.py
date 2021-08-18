@@ -3,10 +3,9 @@ import numpy as np
 
 class StepSampler(object):
 
-    def __init__(self, env_maker, max_traj_length=1000):
-        self.env_maker = env_maker
+    def __init__(self, env, max_traj_length=1000):
         self.max_traj_length = max_traj_length
-        self._env = env_maker()
+        self._env = env
         self._traj_steps = 0
         self._current_observation = self.env.reset()
 
@@ -54,10 +53,9 @@ class StepSampler(object):
 
 class TrajSampler(object):
 
-    def __init__(self, env_maker, max_traj_length=1000):
-        self.env_maker = env_maker
+    def __init__(self, env, max_traj_length=1000):
         self.max_traj_length = max_traj_length
-        self._env = env_maker()
+        self._env = env
 
     def sample(self, policy, n_trajs, deterministic=False, replay_buffer=None):
         trajs = []

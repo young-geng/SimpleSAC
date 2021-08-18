@@ -33,6 +33,18 @@ python -m viskit './experiment_output'
 and simply navigate to [http://localhost:5000/](http://localhost:5000/)
 
 
+## Weights and Biases Online Visualization Integration
+This codebase can also log to [W&B online visualization platform](https://wandb.ai/site). To log to W&B, you first need to set your W&B API key environment variable:
+```
+export WANDB_API_KEY='YOUR W&B API KEY HERE'
+```
+Then you can run experiments with W&B logging turned on:
+```
+python -m SimpleSAC.sac_main --env 'HalfCheetah-v2' --output_dir './experiment_output' --device='cuda' --wandb_logging
+```
+
+
+
 ## Credits
 The project organization is inspired by [TD3](https://github.com/sfujim/TD3).
 The SAC implementation is based on [rlkit](https://github.com/vitchyr/rlkit).
