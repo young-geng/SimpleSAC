@@ -16,3 +16,4 @@ dependencies:
         - Flask
         - plotly
         - wandb
+        - ml_collections

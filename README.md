@@ -11,18 +11,22 @@ $ source activate SimpleSAC
 ```
 You'll need to [get your own MuJoCo key](https://www.roboti.us/license.html) if you want to use MuJoCo.
 
-2. Add this repo directory to your `PYTHONPATH` environment variable or pip install this repo with:
+2. Add this repo directory to your `PYTHONPATH` environment variable.
 ```
-pip install -e .
+export PYTHONPATH="$PYTHONPATH:$(pwd)"
 ```
 
 ## Run Experiments
-You can run experiments using the following command:
+## Run Experiments
+You can run SAC experiments using the following command:
 ```
-python -m SimpleSAC.sac_main --env 'HalfCheetah-v2' --output_dir './experiment_output' --device='cuda'
+python -m SimpleSAC.sac_main \
+    --env 'HalfCheetah-v2' \
+    --logging.output_dir './experiment_output' \
+    --device='cuda'
 ```
 If you want to run on CPU only, just omit the `--device='cuda'` part.
-All available command options can be seen in SimpleSAC/main.py.
+All available command options can be seen in SimpleSAC/sac_main.py and SimpleSAC/sac.py.
 
 
 ## Visualize Experiments
@@ -38,10 +42,18 @@ This codebase can also log to [W&B online visualization platform](https://wandb.
 ```
 export WANDB_API_KEY='YOUR W&B API KEY HERE'
 ```
+
 Then you can run experiments with W&B logging turned on:
+
 ```
-python -m SimpleSAC.sac_main --env 'HalfCheetah-v2' --output_dir './experiment_output' --device='cuda' --wandb_logging
+python -m SimpleSAC.sac \
+    --env 'HalfCheetah-v2' \
+    --logging.output_dir './experiment_output' \
+    --device='cuda' \
+    --logging.online
 ```
+
+
 
 
 
