@@ -26,7 +26,8 @@ python -m SimpleSAC.sac_main \
     --device='cuda'
 ```
 If you want to run on CPU only, just omit the `--device='cuda'` part.
-All available command options can be seen in SimpleSAC/sac_main.py and SimpleSAC/sac.py.
+All available command options can be seen in [SimpleSAC/sac_main.py](https://github.com/young-geng/SimpleSAC/blob/master/SimpleSAC/sac_main.py)
+and [SimpleSAC/sac.py](https://github.com/young-geng/SimpleSAC/blob/master/SimpleSAC/sac.py).
 
 
 ## Visualize Experiments
