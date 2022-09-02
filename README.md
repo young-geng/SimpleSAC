@@ -1,6 +1,9 @@
 # SimpleSAC
 A simple and modular implementation of the [Soft Actor Critic](https://arxiv.org/abs/1812.05905) algorithm in PyTorch.
 
+## Codebase Deprecated
+**This library is deprecated in favor of [JaxCQL](https://github.com/young-geng/JaxCQL) and [CQL](https://github.com/young-geng/CQL), which include up-to-date SAC and CQL implementation in JAX and PyTorch. This codebase will no longer receive new updates and bug fixes.** 
+
 
 ## Installation
 
